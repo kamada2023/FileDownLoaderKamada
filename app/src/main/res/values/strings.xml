@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">FileDownLoaderKamada</string>
+    <string name="app_name">FileDownLoader</string>
     <string name="gallery_select">GALLERYから選択</string>
     <string name="please_url">urlを入れてください</string>
     <string name="download_start">ダウンロード開始</string>

@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.HandlerCompat
 import jp.co.abs.filedownloaderkamada.databinding.ActivityFileDownLoaderBinding
@@ -23,31 +24,23 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.concurrent.Executors
 
-
 open class FileDownLoaderActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityFileDownLoaderBinding
 
     //パス文字列
     private val downloadPath:String = Environment.getExternalStorageDirectory().path+"/Kamada_Picture"
-//    private val anotherPath:String = applicationContext.filesDir.path+"/Kamada_PIC/"
     private var fileName = ""
     private var success = "ダウンロードが完了しました"
     private var failure = "画像取得に失敗しました"
-//    private var uri: Uri? =
-//        Uri.parse("content://com.android.externalstorage.documents/document/primary%3AKamada_Picture%2F")
-
-    companion object{
-        private const val REQUEST_GALLERY_TAKE = 2
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityFileDownLoaderBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        var anotherPath = File(downloadPath)
-        if (!anotherPath.exists()) {
+        val downloadPathFile = File(downloadPath)
+        if (!downloadPathFile.exists()) {
             AlertDialog.Builder(this) // FragmentではActivityを取得して生成
                 .setTitle("ストレージへの")
                 .setMessage("アクセス許可")
@@ -55,8 +48,8 @@ open class FileDownLoaderActivity : AppCompatActivity() {
 
                     try {
                         // 保存先のディレクトリが無ければ作成する
-                        anotherPath.mkdir()
-                        Log.d("Log","new_path:$anotherPath")
+                        downloadPathFile.mkdir()
+                        Log.d("Log","new_path:$downloadPathFile")
                     } catch (error: SecurityException) {
                         // ファイルに書き込み用のパーミッションが無い場合など
                         error.printStackTrace()
@@ -84,7 +77,8 @@ open class FileDownLoaderActivity : AppCompatActivity() {
         binding.gallery.setOnClickListener {
             val intent = Intent(Intent.ACTION_PICK)
             intent.type = "image/*"
-            startActivityForResult(intent, REQUEST_GALLERY_TAKE)
+            //ギャラリーへ遷移
+            receivePicture.launch(intent)
         }
         //clearボタン
         binding.clear.setOnClickListener {
@@ -93,12 +87,10 @@ open class FileDownLoaderActivity : AppCompatActivity() {
         }
         //ダウンロードした画像ボタン
         binding.downloadStill.setOnClickListener {
-//            val pathTest2 = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),"Kamada_Picture")
-//            val docUri = Uri.fromFile(pathTest2)
-//            val intent = Intent(Intent.ACTION_VIEW, docUri)
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-            intent.type = "image/png"
-            startActivityForResult(intent, REQUEST_GALLERY_TAKE)
+            intent.type = "image/*"
+            intent.addCategory(Intent.CATEGORY_OPENABLE)
+            receivePicture.launch(intent)
         }
     }
 
@@ -126,10 +118,12 @@ open class FileDownLoaderActivity : AppCompatActivity() {
 
                 val sdf = SimpleDateFormat("yyyyMMdd_HHmmss")
                 val current = sdf.format(Date())
-                // ②
+
+                // ファイルを作成
                 fileName = "$current.png"
                 val file = File(downloadPath, fileName)
-                // ③
+
+                // ファイルに書き込み
                 FileOutputStream(file).use { stream ->
                     bmp.compress(Bitmap.CompressFormat.PNG, 100, stream)
                 }
@@ -148,16 +142,13 @@ open class FileDownLoaderActivity : AppCompatActivity() {
 
         }
     }
-    override fun onActivityResult(requestCode:Int, resultCode:Int, data:Intent? )
-    {
-        super.onActivityResult(requestCode, resultCode, data)
-            when (requestCode) {
-                REQUEST_GALLERY_TAKE -> {
-                    if (resultCode == Activity.RESULT_OK) {
-                        binding.imageView.setImageURI(data?.data)
-                        Toast.makeText(applicationContext, "画像を取得しました", Toast.LENGTH_SHORT).show()
-                    }
-                }
+    //ギャラリーから画像受け取り
+    private val receivePicture =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            if (it.resultCode == Activity.RESULT_OK) {
+                // 画像を表示（ギャラリーintentから取得）
+                binding.imageView.setImageURI(it.data?.data)
+                Toast.makeText(applicationContext, "画像を取得しました", Toast.LENGTH_SHORT).show()
             }
-    }
+        }
 }
